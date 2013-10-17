@@ -1,0 +1,63 @@
+/nn - Opens up Notes file for selected Nick and Inserts date and Time at the end of the notes file.
+
+/nn n NICK - Uses NICK instead of highlighted nick.
+
+/nn n / Text - Samething as /nn except you can add Text to the end of the line. /=nothing.
+
+/nn c - Checks to see if there is a notes file for the selected nick.
+
+/nn t - does NOT insert the date and time.
+
+/nn l - List last user note's opened.
+
+/nn d - Delete Last Nick user's notes.
+
+/nn d NICK - Deletes NICKs user notes file. (Version 4.0 Only.)
+
+/nn dD - Deletes Main User notes file.
+
+/nn tc - First checks to see if the Notes file exist. If not then displays a message saying it cannot open that file. If it does exist then opens the file in GEdit.
+
+/nn tc NICK - Same as /nn tc but uses Nick instead. (Version 4.0 Only.)
+
+/nn nc NICK or /nn c NICK (Version 4.0 Only.) - Manually checks if a User Note Exist.
+
+/nn nt NICK or /nn t NICK (Version 4.0 Only.) - Manually open up User note and do not insert date.
+
+/nn v - View Script Name, Author and Version.
+
+/nn vs - Show the current channel /nn v.
+
+/nn p - Shows how many points a user has.
+
+/nn p+x - Adds x amount of points.
+
+/nn p-x - subtracts x amount of points.
+
+/nn p=x - Gives that user x amount of points
+
+/nn pL - Opens up points log file.
+
+/nn h - Hides/omits the directory you are using to store the Notes files in from output.
+
+/nn hh - Same thing has 'h' but also hides the end of the file name; i.e. only displays the nick.
+
+/nn s - Show output in IRC conversation, execpt for errors.
+
+/nn sa - Shows all output in the IRC conversation including errors.
+
+/nn C - Opens up the config file. If next perimeter is empty or /
+
+/nn CN NICK - Saves NICK as the Main Nick
+
+/nn CN - Saves Your Main Nick.
+
+/nn CD DIR - Changes where to store the Notes files. 
+
+/nn CD - Changes to the default Notes directoy. /home/USERNAME/UserNotes/
+
+/nn CC NUM - Where NUM is a Hex number 0-F. Changes the color of messages displayed.
+
+/nn CC - Changes message color back to default, 6 (purple).
+
+/nn H or /nn help - Displays this help file.

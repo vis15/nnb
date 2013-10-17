@@ -1,0 +1,453 @@
+#!/bin/bash
+Version="4.0 Beta"
+Author="MrX"
+Name="Konversation User Notes Script"
+#note: $1=Server, $2=Channel, $3=File, $4=t/c/tc/n/d/..., $5=Nick, $6-$X = End Text
+#note: t=No Date/Time, c=check, d=delete last nick opened. l=last nick, s=show messages in chat, sa=show all in chat, eg. errors. 
+
+#old way #BB= #Turns Text Bold in IRC #0x02 = Bold
+BB=`echo -e "\x02"`
+X03=`echo -e "\x03"` #For Color
+X15=`echo -e "\x0F"` #Default Color
+Num=0
+#Global Vars For Functions
+Server=$1
+Target=$2
+File=$3
+Var=$4
+LN2=$5
+Default_Color=6 #Color 6 = purple
+
+UserName=`whoami`
+Config_File="/home/$UserName/nn.config"
+DefaultDir="/home/$UserName/UsersNotes"
+
+if [[ "$Var" != *s* ]]; then
+	cmd=info
+elif [[ "$Var" == *s* ]]; then
+	say2=say
+	cmd="$say2 $Server $Target"
+fi
+
+if [[ "$Var" != *j* ]]; then
+	New_Line='\n' #for insert date
+fi
+
+function Say {
+	qdbus org.kde.konversation /irc $cmd "$X03$MC$1"
+}
+
+function ToLower {
+	rToLower=`echo $1 | tr '[A-Z]' '[a-z]'`
+}
+
+ToLower $Var
+lVar=$rToLower #Used for help
+
+if [ "$LN2" == "/" ]; then #used so, you can enter end text without typing someones nick.
+	LN2=""
+fi
+
+function Check_File {
+	cFile=$1 #$1 and $2 Internal function variables
+	cExit=$2
+	
+	if [ -d $cFile ]; then #if Dir then exit.
+		if [[ "$Var" != *sa* ]]; then
+			qdbus org.kde.konversation /irc info "$BB""Error:$BB $rFormat_Nick $BB""is a Directory$BB. $End_Text"
+			exit; 
+		else
+			qdbus org.kde.konversation /irc say $Server "$Target" "$BB""Error:$BB $rFormat_Nick $BB""is a Directory$BB. $End_Text"
+			exit;
+		fi
+	fi
+	if [ -e $cFile ]; then
+		Exist="True" #if exist (ex) then True
+	elif [ ! -e $cFile ]; then
+		Exist="False" #if not exist (ex) then False
+
+		if [ "$cExit" == "Exit" ]; then #n=no error, if file does not exist;
+			Say "$BB""File:$BB $rFormat_Nick $BB""does not exist$BB. $End_Text"
+			exit;
+		fi
+	else
+		qdbus org.kde.konversation /irc error "An Unknown Error has Occurred."
+		exit;
+	fi
+}
+
+function Open_Config {
+	Check=$1
+	arrConfig=( 'Nick' 'NotesDir' 'Color' ) #Vars in config file
+	
+	for (( i=0; i<${#arrConfig[@]}; i++ )); do
+		ConfigVars[$i]=$(awk -F= '/'${arrConfig[$i]}'/{print $2}' $Config_File)
+	done
+	
+	MainNick=${ConfigVars[0]}
+	rOpen_Config_Dir=${ConfigVars[1]}
+	MC=${ConfigVars[2]} #Main Color
+	
+	if [ "$Check" != "Check" ]; then
+		if [ "$MainNick" == "" ]; then
+			Save_Config
+			MainNick=$rGetMainNick
+		fi
+	fi
+}
+
+function GetMainNick {
+	if [[ "$Var" == *CN* ]]; then
+		if [ "$LN2" != "" ]; then
+			rGetMainNick=$LN2
+		else
+			rGetMainNick=`qdbus org.kde.konversation /identity getIdent something`
+		fi
+	else
+		Open_Config "Check"
+		
+		if [ "$MainNick" == "" ]; then
+	 		rGetMainNick=`qdbus org.kde.konversation /identity getIdent something`
+	 	else
+	 		rGetMainNick=$MainNick
+	 	fi
+	fi
+}
+
+function Get_Dir {
+	Check_File $Config_File
+	
+	if [[ "$Var" != *CD* ]]; then
+		if [ "$Exist" == "True" ]; then
+			Open_Config "Check"
+			rGet_Dir=$rOpen_Config_Dir
+		
+			if [ "$rGet_Dir" == "" ]; then
+				rGet_Dir=$DefaultDir
+			fi
+		else
+			rGet_Dir=$DefaultDir
+		fi
+	else
+		rGet_Dir=$LN2
+		if [ "$rGet_Dir" == "" ]; then
+			rGet_Dir=$DefaultDir
+		fi
+	fi
+}
+
+function Get_Color {
+	if [[ "$Var" == *CC* ]]; then
+		if [ "$LN2" == "" ]; then
+			MC=$Default_Color
+		else
+			MC=$LN2
+		fi
+	fi
+}
+
+function Save_Config {
+	GetMainNick
+	Get_Dir
+	Get_Color
+	Dir=$rGet_Dir
+	
+	Output="Nick=$rGetMainNick"
+	Output="$Output\n""NotesDir=$Dir"
+	Output="$Output\n""Color=$MC"
+	
+	echo -e "$Output" > $Config_File
+	
+	Say "Config Saved"
+}
+
+function Update_Nick {
+	Get_Dir
+	Dir=$rGet_Dir
+	
+	if [ ! -d "$Dir/" ]; then #if not directory
+		mkdir "$Dir/"
+		ErrNum=$? #place last errnum in ErrNum
+		if [ "$ErrNum" != "0" ]; then
+			Say "Error: $Dir/ was not created. Error $ErrNum"
+			exit;
+		fi
+	fi
+	
+	if [[ "$Var" == *n* ]] && [ "$Var" != "n" ]; then
+		Nick=$LN2
+	else
+		#Old #Nick=`echo ${LN%%-*}` #Nick=Nick Name
+		Nick=$File
+	fi
+	
+	if [ "$Nick" == "" ]; then
+		Say "Error: No Nick was given"
+		exit;
+	fi
+	
+	#Old #LN=$LN2`echo ${File##*/}` #LN=Last nick/File Name; ##=last last part; *=*; /=split char
+	#Old #Dir=`echo ${File%/*}` #Dir = Working Directory; %=first part;
+	Nick2=.Notes
+	LN=$Nick$Nick2
+	File=$Dir/$LN
+	
+	hDir=$Dir/ #hide Dir if h
+	#Nick2=-`echo ${LN##*-}` #Rest of LN
+	
+	if [[ "$Var" == *h* ]]; then
+		hDir=""
+		
+		if [[ "$Var" == *hh* ]]; then
+			Nick2=""
+		fi
+	fi
+	
+	if [[ "$Var" == *p* ]]; then
+		DotPoints=.Points
+	fi
+	
+	rFormat_Nick=$hDir$BB$Nick$BB$Nick2$DotPoints
+}
+
+Update_Nick
+
+function Output_to {
+	OT=$1 #OT=Output to
+	OT_File=$2
+	if [ "$OT" == "File" ]; then
+		if [[ "$Var" == *j* ]]; then
+			Remove_Points_Line
+			echo $End_Text >> $OT_File
+			Insert_PointsLine "\n"
+		else
+			gedit $OT_File
+		fi
+	elif [ "$OT" == "Screen" ]; then
+		OT_Text=`cat $OT_File`
+		Say $OT_Text
+	fi
+}
+
+function OC_Help {
+	Output_to "Screen" $Dir/usage.nn
+}
+
+if [ "$lVar" == "help" ] || [[ "$Var" == *H* ]]; then
+	OC_Help
+	exit;
+fi
+
+pFile=$File.Points
+
+#Begin: Get end of Text
+i=5 #start at $6
+argv=("$@") # $@ = all $'s, eg, $1-$999
+sp=" "
+tn=$# #len of $@
+
+while [ $i -le $tn ]; do
+	End_Text=$End_Text$sp${argv[$i]}
+	let i++
+done
+
+if [ "$End_Text" != "" ]; then
+	End_Textd=.$End_Text
+fi
+#End: Get end of Text
+
+if [ "$Var" != "i" ] && [[ "$Var" != *d* ]]; then
+	echo "$LN" > $Dir/LN #saves file/nick into current working dir
+fi
+
+function OC_File { #OC = Open Close
+	if [ "$Exist" == "False" ]; then
+		CF="$BB""Created$BB $rFormat_Nick."
+		Say "$CF"
+	fi
+	
+	Say "$BB""Opened$BB $rFormat_Nick in $Target. $KonInfo$End_Textd"
+	Output_to "File" $File
+	Say "$BB""Closed$BB $rFormat_Nick in $Target. $KonInfo"
+}
+
+function Insert_Date {
+	echo -e `date +"%a, %b %d %r %Y %Z"`"$New_Line" >> $File
+}
+
+function Remove_Points_Line {
+	Last_Line=`tail -1 $File` #Get last line of $File
+	if [[ $Last_Line == Points* ]]; then
+		Num=`echo ${Last_Line:8}` # Len(Points: ) = 8
+		sed '$d' < $File > $Dir/nn.tmp #Remove last line
+		mv $Dir/nn.tmp $File
+	fi 
+}
+
+function OC_Config {
+	gedit $Config_File
+}
+
+function Insert_PointsLine {
+	echo -e "$1""Points: $Num" >> $File
+}
+
+if [[ "$Var" == *c* ]]; then
+	if [[ "$Var" == *p* ]]; then
+		File=$pFile
+	fi
+	
+	Check_File $File "Exit" # "Exit" = exit if file doesn't exist.
+
+	if [ "$Exist" == "True" ]; then
+		if [ "$Var" == "c" ]; then
+			Say "$BB""File:$BB $rFormat_Nick $BB""exist$BB. $End_Text"
+		fi
+	fi
+	
+	if [[ "$Var" != *t* ]]; then
+		exit;
+	fi
+fi
+
+#Begin Main Script
+
+case $Var in
+*p*) #Place *p* first was one of the ways to implement /nn tp+x. Also, could put all of *p* in a function.
+	if [[ "$Var" == *L* ]]; then
+		File=$pFile
+		Check_File $File
+		OC_File
+		exit;
+	fi
+	
+	Check_File $File
+
+	if [ "$Exist" == "True" ]; then #If $File exist
+		Remove_Points_Line
+	fi
+	
+	Var_Len=`echo ${#Var}`
+	
+	while [ $Var_Len -gt 0 ]; do
+		let j++
+		char=`echo ${Var:$j:1}` #text:position:length
+		
+		if [ $char == "+" ] || [ $char == "-" ] || [ $char == "=" ]; then
+			sym=$char
+			Points_Num=`echo ${Var:$j+1}`;
+		fi
+		
+		let Var_Len--
+	done
+	
+	#Check to see if Points_Num is a number?
+	
+	let Num=Num$sym$Points_Num #implement p and pp
+	
+	Insert_PointsLine
+	
+	if [[ "$Var" != *t* ]]; then
+		echo -e `date +"\n%a, %b %d %r %Y %Z"` >> $pFile
+	fi
+	
+	echo "$sym$Points_Num Points. Total Points: $Num. $End_Text" >> $pFile
+
+	Say "$BB$Nick$BB $sym$Points_Num Points. $BB""Total Points: $Num$BB. $End_Text"
+	;;
+*t*)
+	#if [[ "$Var" == *tc* ]]; then #Could place *c* before *t*, then do not need. Which is faster?
+		#Check_File $File "Exit"
+	#fi
+	
+	UU=`echo $Var | tr '[a-z]' '[A-Z]'`; #lower to upper case
+	KonInfo="In Mode: $BB$UU$BB"
+
+	OC_File
+	exit;
+	;;
+*d*)
+	if [[ $Var == *P* ]]; then
+		File=$pFile
+	else
+		File=$Dir/`cat $Dir/LN`
+	fi
+
+	Open_Config
+	#Update_Nick
+	Check_File $File "Exit"
+	
+	ToLower $MainNick
+	lMainNick=$rToLower #Lowercase MainNick
+	ToLower $Nick
+	lNick=$rToLower
+	
+	#Say "lMainNick = $lMainNick; lnick = $lNick"
+	
+	if [ "$lNick" == "$lMainNick" ] && [[ "$Var" != *dD* ]]; then
+		NotDeleted="Not"
+		Say "$BB""$Nick$BB is the $BB""Main Nick$BB."
+	else
+		rm $File
+		ErrNum=$?
+		if [ "$ErrNum" != "0" ]; then
+			Say "Error: $Dir/ was not deleted. Error $ErrNum"
+			exit;
+		fi
+	fi
+
+	Say "$BB""File$BB $rFormat_Nick was $BB""$NotDeleted Deleted$BB. $End_Text"
+	;;
+*l*)
+	File=$Dir/`cat $Dir/LN`
+	Say "$BB""Last Nick$BB was $rFormat_Nick. $End_Text"
+	;;
+*i*)
+	if [ "$4" == "is"  ]; then
+		qdbus org.kde.konversation /irc say $Server "$Target" "/me is using $BB$Name$BB By: $BB$Author$BB version: $BB$Version"
+	else	
+		qdbus org.kde.konversation /irc info "$BB$Name$BB By: $BB$Author$BB version: $BB$Version"
+	fi
+	;;
+*C*)
+	if [ "$Var" == "C" ]; then
+		OC_Config #Open Config
+	else
+		Save_Config
+		
+		if [[ "$Var" == *CN* ]]; then
+			Say "New Main Nick is: $rGetMainNick"
+		fi
+		
+		if [[ "$Var" == *CD* ]]; then
+			Say "New Dir, $Dir, Saved."
+		fi
+		
+		if [[ "$Var" == *CC* ]]; then
+			Say "New Color is $MC"
+		fi
+	fi
+	;;
+*H*)
+	OC_Help
+	;;
+*) #Reg use/normal use /nn
+	Check_File $File
+	
+	if [ "$Exist" == "True" ]; then
+		Remove_Points_Line
+	fi
+	
+	Insert_Date
+	Insert_PointsLine "$New_Line"
+	OC_File
+	exit;
+	;;
+esac
+
+
+
+
+
+
+
