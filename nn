@@ -1,6 +1,6 @@
 #!/bin/bash
 Version="4.0 Beta"
-Author="MrX"
+Author="Tim O"
 Name="Konversation User Notes Script"
 #note: $1=Server, $2=Channel, $3=File, $4=t/c/tc/n/d/..., $5=Nick, $6-$X = End Text
 #note: t=No Date/Time, c=check, d=delete last nick opened. l=last nick, s=show messages in chat, sa=show all in chat, eg. errors. 
